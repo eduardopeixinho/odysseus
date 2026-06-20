@@ -7,3 +7,6 @@ search:
   formats:
     - html
     - json
+
+# Default DOI resolver required by searxng configuration
+default_doi_resolver: "oadoi.org"
