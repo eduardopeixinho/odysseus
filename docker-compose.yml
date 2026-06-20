@@ -97,20 +97,26 @@ services:
       - -c
       - |
         set -eu
-        # Always regenerate settings.yml from template to ensure all required
-        # keys are present (e.g. default_doi_resolver). The Docker image ships
-        # its own /etc/searxng/settings.yml, and named-volume initialisation
-        # copies it before this entrypoint runs, so the existence check alone
-        # is not reliable.
+        # Write settings.yml from inline template (bind mounts from ./config/
+        # are unreliable in Coolify's build environment).
+        cat > /etc/searxng/settings.yml <<- 'SEARXNG_EOF'
+          use_default_settings: true
+          server:
+            secret_key: "__SEARXNG_SECRET__"
+          search:
+            formats:
+              - html
+              - json
+          default_doi_resolver: "oadoi.org"
+        SEARXNG_EOF
         secret="$${SEARXNG_SECRET:-}"
         if [ -z "$$secret" ]; then
           secret="$$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
         fi
-        sed "s|__SEARXNG_SECRET__|$$secret|g" /tmp/searxng-settings.yml.template > /etc/searxng/settings.yml
+        sed -i "s|__SEARXNG_SECRET__|$$secret|g" /etc/searxng/settings.yml
         exec /usr/local/searxng/entrypoint.sh
     volumes:
       - searxng-data:/etc/searxng
-      - ./config/searxng/settings.yml:/tmp/searxng-settings.yml.template:ro
     environment:
       - SEARXNG_BASE_URL=http://localhost:8080/
       - SEARXNG_SECRET=${SEARXNG_SECRET:-}
